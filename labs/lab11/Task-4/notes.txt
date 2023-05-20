@@ -1,0 +1,17 @@
+yep, the loops are independent as each loop only accesses the arrays at their current index
+
+n =  1: 15.87 
+n =  2: 11.90
+n =  4:  6.94
+n =  8:  3.72
+n = 16:  1.92
+n = 32:  0.98
+
+result stays correct, scaling is kinda weird
+
+n = 4:
+static  = 6.94
+dynamic = 3.97
+guided  = 3.97
+
+dynamic and guided perform much better, could probably be optimized with chunk_size

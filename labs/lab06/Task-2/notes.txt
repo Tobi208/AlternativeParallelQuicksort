@@ -1,0 +1,13 @@
+Without typedef int intType, the compiler doesn't know what intType is? Lots of errors.
+
+Measures for N = 10000000
+
+char:      1.875
+short int: 1.957
+int:       2.160
+long int:  2.497
+long long: 2.557
+
+Char gives the best performance because the lower the number of bits needed to store the numbers, the less memory is used and the faster the operations are.
+
+If we used intType for everything we wouldn't be able to e.g. use a larger input number than 255 if we set intType to char.

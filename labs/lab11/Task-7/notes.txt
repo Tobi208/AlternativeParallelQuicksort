@@ -1,0 +1,15 @@
+A: N 8000 M 80
+T 1 = real    0m 9,257s / user    0m9,208s
+T 4 = real    0m 2,284s / user    0m8,149s
+
+B: N 800 M 8000
+T 1 = real    0m12,045s / user    0m11,996s
+T 4 = real    0m 3,288s / user    0m12,039s
+
+C: N 8 M 800000
+T 1 = real    0m 5,910s / user    0m5,901s
+T 4 = real    0m12,311s / user    0m44,578s
+
+I'm not sure why the serial execution time goes up for N 800 and then down for N 8.
+The time gets worse for 4 threads because the processes have to invalidate each other's caches a lot.
+Not sure what's to see for real vs user time.

@@ -1,0 +1,23 @@
+Used comp opts (as recommended per lecture): -O3 -march=native -ffast-math
+
+
+short-circuit: for && statements I put the most likely case to fail first. For || statements I put the most likely case to succeed first.
+
+SLOW, unoptimized, best out of 5: 0,560s
+SLOW,   optimized, best ouf of 5: 0,550s
+
+FAST, unoptimized, best out of 5: 0,380s
+FAST,   optimized, best out of 5: 0,349s
+
+Shows that my if-rearrangement successfully implemented boolean short-circuiting.
+
+
+bounds: this works because a negative int cast to unsinged int will be a much larger positive int and only needs to be checked against size.
+
+SLOW, unoptimized, best out of 5: 2,828s
+SLOW,   optimized, best ouf of 5: 0,000s
+
+FAST, unoptimized, best out of 5: 2,359s
+FAST,   optimized, best out of 5: 0,000s
+
+I expected the speedup to be better for the FAST version. It's a bit disappointing that the compiler seems to know a much better way to optimize this. What are its secrets?

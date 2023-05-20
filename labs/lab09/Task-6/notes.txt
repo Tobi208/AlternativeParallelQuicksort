@@ -1,0 +1,4 @@
+unoptimized: Time: 4.717350  NUM_THREADS: 5
+optimzed:    Time: 0.718232  NUM_THREADS: 5
+
+The time complexity is O(N^2), so much worse than merge sort's O(N log N).

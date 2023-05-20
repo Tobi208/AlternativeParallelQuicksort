@@ -1,0 +1,13 @@
+I get zero speedup on vitsippa
+
+tola9583@vitsippa:~/hpp/labs/lab6/Task-3$ ./restrict_test
+transform_std tests took   0.327 wall seconds.
+transform_opt tests took   0.328 wall seconds.
+
+Getting a bit of speedup with N1 / 500, N2 * 500:
+
+tola9583@vitsippa:~/hpp/labs/lab6/Task-3$ ./restrict_test
+transform_std tests took   0.455 wall seconds.
+transform_opt tests took   0.399 wall seconds.
+
+So decreasing N1 definitely helps.

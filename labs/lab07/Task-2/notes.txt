@@ -1,0 +1,27 @@
+N = 200, -O2, factor 4
+f_std tests took   1.454 wall seconds.
+f_opt tests took   0.641 wall seconds.
+
+Yes, the opted version is faster. Even better than last time. The loop condition had to be adjusted a bit for non-divisible factors. But since counter % 4 == 0, it does not have to be considered.
+
+
+N = 200, -funroll-loops, factor 4
+f_std tests took   1.298 wall seconds.
+f_opt tests took   0.642 wall seconds.
+
+The compiler seems to be unable to unroll to standard loop due to branching and the reliance on counter.
+
+
+N = 200, -O3, factor 4
+f_std tests took   1.714 wall seconds.
+f_opt tests took   0.504 wall seconds.
+
+Somehow the std function is slower, but it was able to optmize my function a bit more.
+
+
+N = 200, -O3 -funroll-loops, factor 4
+f_std tests took   1.061 wall seconds.
+f_opt tests took   0.427 wall seconds.
+
+Not sure what's going on with the std function.
+I guess -O3 AND loop unrolling enables the compiler to optimize it better?

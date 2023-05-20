@@ -1,0 +1,12 @@
+const long int NA = 700000000;
+const long int NB = 100000000;
+real time = 2,105s
+
+const long int NA = 400000000;
+const long int NB = 400000000;
+real time = 1,268s
+
+speedup is not quite 2.0 but still good since I'm timing the whole program
+
+yes, the thread stops occupying cpu time once it finish its computations
+

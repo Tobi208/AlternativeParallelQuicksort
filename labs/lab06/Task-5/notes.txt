@@ -1,0 +1,56 @@
+I went straight to transpose_x to save myself some time.
+
+N=3000
+
+blockSz=200
+do_transpose_mod_standard 1 times for N=3000 took   0.843 wall seconds.
+do_transpose_mod_optimized 1 times for N=3000 took   0.473 wall seconds.
+
+blockSz=150
+do_transpose_mod_standard 1 times for N=3000 took   0.848 wall seconds.
+do_transpose_mod_optimized 1 times for N=3000 took   0.477 wall seconds.
+
+blockSz=100
+do_transpose_mod_standard 1 times for N=3000 took   0.803 wall seconds.
+do_transpose_mod_optimized 1 times for N=3000 took   0.498 wall seconds.
+
+blockSz=50
+do_transpose_mod_standard 1 times for N=3000 took   0.808 wall seconds.
+do_transpose_mod_optimized 1 times for N=3000 took   0.487 wall seconds.
+
+blockSz=25
+do_transpose_mod_standard 1 times for N=3000 took   0.831 wall seconds.
+do_transpose_mod_optimized 1 times for N=3000 took   0.491 wall seconds.
+
+Running on vitsippa, chaging the block size doesn't seem to have any effect? Or am I pregante?
+
+
+Trying again for transpose (no x)
+
+N=5000
+
+blockSz=500
+do_transpose_mod_standard 1 times for N=5000 took   0.371 wall seconds.
+do_transpose_mod_optimized 1 times for N=5000 took   0.185 wall seconds.
+
+blockSz=200
+do_transpose_mod_standard 1 times for N=5000 took   0.369 wall seconds.
+do_transpose_mod_optimized 1 times for N=5000 took   0.160 wall seconds.
+
+blockSz=125
+do_transpose_mod_standard 1 times for N=5000 took   0.369 wall seconds.
+do_transpose_mod_optimized 1 times for N=5000 took   0.202 wall seconds.
+
+blockSz=100
+do_transpose_mod_standard 1 times for N=5000 took   0.369 wall seconds.
+do_transpose_mod_optimized 1 times for N=5000 took   0.174 wall seconds.
+
+blockSz=50
+do_transpose_mod_standard 1 times for N=5000 took   0.370 wall seconds.
+do_transpose_mod_optimized 1 times for N=5000 took   0.147 wall seconds.
+
+blockSz=25
+do_transpose_mod_standard 1 times for N=5000 took   0.370 wall seconds.
+do_transpose_mod_optimized 1 times for N=5000 took   0.142 wall seconds.
+
+Well, I get different values, but maybe I cannot find a trend.

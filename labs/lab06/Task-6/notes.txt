@@ -1,0 +1,13 @@
+unoptimized: 12,814s
+using fi:     0,002s
+using attr:   0,002s
+
+Both ways seem to be viable to optimize the program.
+
+after moving the function to main: 0,303s
+
+Function calls moving everything to main:     400000000
+Function calls using __attribute__ ((const)):     20000
+
+The optimization when moving everything to main is not as good as declaring a pure function.
+The function calls are probably so high because the compiler inlines the function? While the pure function is only called in the outer loop

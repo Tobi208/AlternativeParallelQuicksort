@@ -1,0 +1,44 @@
+Does a bunch of FP arithmentics, basically no system calls.
+
+tola9583@vitsippa:~/hpp/labs/lab5/Task-0$ time ./regularcode
+     1.0000499600361
+
+real    0m3,006s
+user    0m3,005s
+sys     0m0,000s
+
+
+Same as regular code but the time spent sleeping doesnt count towards user time because it's not executing user code. Thread is probably handed off to a different process in between which is added to the real time.
+
+tola9583@vitsippa:~/hpp/labs/lab5/Task-0$ time ./sleepycode
+Calling sleep(), m = 0
+Calling sleep(), m = 1
+Calling sleep(), m = 2
+Calling sleep(), m = 3
+Calling sleep(), m = 4
+     1.0000499600361
+
+real    0m8,007s
+user    0m3,006s
+sys     0m0,000s
+
+
+Spends somewhat significant amount of time allocating memory which is a system call. Real time is sum of user arithmentics and system malloc.
+
+tola9583@vitsippa:~/hpp/labs/lab5/Task-0$ time ./mallocycode
+     1.0000059952043
+
+real    0m4,293s
+user    0m3,713s
+sys     0m0,580s
+
+
+Each thread spends 3 seconds executing user code which is summed up for all individual processes while the real time of the program is for all processes in parallel.
+
+tola9583@vitsippa:~/hpp/labs/lab5/Task-0$ time ./threadedcode
+main thread result :      1.0000499600361
+other thread result:      1.0000499600361
+
+real    0m3,006s
+user    0m6,008s
+sys     0m0,000s

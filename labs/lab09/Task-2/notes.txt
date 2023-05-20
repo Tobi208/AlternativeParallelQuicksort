@@ -1,0 +1,4 @@
+Idk why but pthread_cond_wait has to be put before checking DoItNow == 1, why?
+With cond_wait the cpu usage is only 100%
+
+Without cond_signal, we deadlock because the worker is never going to finish and main will wait for the worker to finish.

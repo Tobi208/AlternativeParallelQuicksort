@@ -1,0 +1,5 @@
+Joinable / detached influences how the thread is terminted. A joinable thread releases its resources once 'join' is called on it. A detached thread immediately releases its resources upon completion.
+
+After switching to detached, the code runs a bit faster since every thread terminates independently
+
+If we remove pthread_exit from main, the root process terminates immediately before the workers can finish which automatically terminates the workers too.

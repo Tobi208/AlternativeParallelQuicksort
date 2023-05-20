@@ -1,0 +1,3 @@
+the number is different every time without synchronization
+
+with the critical section, the sum stays the same

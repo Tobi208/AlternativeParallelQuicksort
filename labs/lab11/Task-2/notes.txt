@@ -1,0 +1,65 @@
+The program creates 2 sections that are distributed across the available threads. I assume 1 thread will take section 1 and thread 2 will take section 2.
+
+nThreads = 2
+
+tola9583@vitsippa:~/hpp/labs/lab11/Task-2$ time ./a.out
+funcB() result: x = 2.718282
+funcA() result: x = 1.648721
+
+real    0m3,006s
+user    0m6,009s
+sys     0m0,000s
+
+
+nThreads = 1
+
+tola9583@vitsippa:~/hpp/labs/lab11/Task-2$ time ./a.out
+funcA() result: x = 1.648721
+funcB() result: x = 2.718282
+
+real    0m6,504s
+user    0m6,503s
+sys     0m0,000s
+
+
+nThreads = 3
+
+tola9583@vitsippa:~/hpp/labs/lab11/Task-2$ time ./a.out
+funcB() result: x = 2.718282
+funcA() result: x = 1.648721
+
+real    0m3,007s
+user    0m6,011s
+sys     0m0,000s
+
+
+Yep, works as expected. When there is only 1 thread, it has to do both sections. If there are 3 threads, 1 thread doesn't have a section and is going to idle.
+
+
+After introducing a third section:
+
+nThreads = 2
+
+tola9583@vitsippa:~/hpp/labs/lab11/Task-2$ time ./a.out
+funcB() result: x = 2.718282
+funcA() result: x = 1.648721
+funcC() result: x = 2.718282
+
+real    0m6,009s
+user    0m9,013s
+sys     0m0,000s
+
+
+nThreads = 3
+
+tola9583@vitsippa:~/hpp/labs/lab11/Task-2$ time ./a.out
+funcB() result: x = 2.718282
+funcC() result: x = 2.718282
+funcA() result: x = 1.648721
+
+real    0m3,006s
+user    0m9,013s
+sys     0m0,000s
+
+
+Result is expected and the explanation is the same as above

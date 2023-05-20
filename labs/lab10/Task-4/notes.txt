@@ -1,0 +1,3 @@
+yes it works, each thread accesses its own data
+
+yep, writing to a result block also works as expected

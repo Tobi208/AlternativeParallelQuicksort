@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <string.h>
 #include <sys/time.h>
 
 /**
@@ -76,10 +77,26 @@ static void serial_qs(int* xs, const int lo, const int hi) {
 }
 
 /**
- * Merge two arrays ys and zs in a location on xs
+ * Split array into lower and upper arrays according to pivot element
 */
-static void merge(int* xs, int* ys, int* zs, const int lo, const int size_y, const int size_z) {
-    int i = lo, j = 0, k = 0;
+static void split(int* xs, int* ys, int* zs, const int n, const int p) {
+    int j = 0, k = 0;
+    for (int i = 0; i < n; i++) {
+        if (xs[i] <= p) {
+            ys[j] = xs[i];
+            j++;
+        } else {
+            zs[k] = xs[i];
+            k++;
+        }
+    }
+}
+
+/**
+ * Merge two arrays ys and zs on xs
+*/
+static void merge(int* xs, int* ys, int* zs, const int size_y, const int size_z) {
+    int i = 0, j = 0, k = 0;
     while (j < size_y && k < size_z) {
         if (ys[j] < zs[k]) {
             xs[i] = ys[j];
@@ -137,13 +154,15 @@ static void* thread_worker(void* targs) {
     // total number of elements in this thread's subarray in xs
     int n = hi - lo + 1;
 
-    // sort subarray locally
-    serial_qs(xs, lo, hi);
+    int* ys = (int*) malloc(n * sizeof(int));
+    memcpy(ys, xs + lo, n * sizeof(int));
 
-    int t = T / 2;     // threads per group
+    // sort subarray locally
+    serial_qs(ys, 0, n - 1);
+
+    int lid; //, gid;
+    int t = T;         // threads per group
     int p;             // value of pivot element
-    int is_left_group; // if process is in a lower half group
-    int n_prev;        // number of elements in xs before this process' elements
 
     // arrays for elements lower/higher than the pivot element
     int* lower = (int*) malloc(sizeof(int));
@@ -156,13 +175,16 @@ static void* thread_worker(void* targs) {
 
     // divide threads into groups until
     // no smaller groups can be formed
-    while (t > 0) {
+    while (t > 1) {
+
+        lid = tid % t;
+        // gid = tid / t;
 
         // strategy 1
         // median of thread 0 of each group
-        if (tid % (t * 2) == 0) {
-            p = xs[(hi - lo) / 2 + lo];
-            for (int i = tid; i < tid + (t * 2); i++)
+        if (lid == 0) {
+            p = ys[n / 2];
+            for (int i = tid; i < tid + t; i++)
                 ps[i] = p;
         }
         pthread_barrier_wait(barrier);
@@ -170,8 +192,8 @@ static void* thread_worker(void* targs) {
         // count number of elements lower/higher than pivot element
         p = ps[tid];
         lower_count = 0;
-        for (int i = lo; i <= hi; i++)
-            if (xs[i] <= p)
+        for (int i = 0; i < n; i++)
+            if (ys[i] <= p)
                 lower_count++;
         upper_count = n - lower_count;
         
@@ -182,39 +204,27 @@ static void* thread_worker(void* targs) {
         upper = (int*) malloc(upper_count * sizeof(int));
 
         // split local subarray into lower/upper arrays
-        int j = 0, k = 0;
-        for (int i = lo; i <= hi; i++) {
-            if (xs[i] <= p) {
-                lower[j] = xs[i];
-                j++;
-            } else {
-                upper[k] = xs[i];
-                k++;
-            }
-        }
+        split(ys, lower, upper, n, p);
 
         /* Data exchange pattern:
-         * T = 8, t = 4
+         * t = 8
          * left groups   right groups
          *   0 1 2 3   |   4 5 6 7
          * then
          * 0 <-> 4, 1 <-> 5, 2 <-> 6, etc. 
          */
 
-        // check if thread is in a lower half group
-        is_left_group = tid % (t * 2) < t;
-
         // send data
-        if (is_left_group) {
+        if (lid < t / 2) {
             // send upper part, receive lower part
-            recv[tid + t] = upper;
-            recv_counts[tid + t] = upper_count;
+            recv[tid + t / 2] = upper;
+            recv_counts[tid + t / 2] = upper_count;
             local = lower;
             local_count = lower_count;
         } else {
             // send lower part, receive upper part
-            recv[tid - t] = lower;
-            recv_counts[tid - t] = lower_count;
+            recv[tid - t / 2] = lower;
+            recv_counts[tid - t / 2] = lower_count;
             local = upper;
             local_count = upper_count;
         }
@@ -224,29 +234,30 @@ static void* thread_worker(void* targs) {
         remote = recv[tid];
         remote_count = recv_counts[tid];
 
-        // reservate space for new local subarray in xs 
+        // merge local and remote elements in place of new local subarray
         n = remote_count + local_count;
-        ns[tid] = n;
-        pthread_barrier_wait(barrier);
-
-        // compute new lower and upper bounds of local subarray
-        n_prev = 0;
-        for (int i = 0; i < tid; i++)
-            n_prev += ns[i];
-        lo = n_prev;
-        hi = lo + n - 1;
-
-        // merge local and remote elements in place of new local subarray in xs
-        merge(xs, local, remote, lo, local_count, remote_count);
+        free(ys);
+        ys = (int*) malloc(n * sizeof(int));
+        merge(ys, local, remote, local_count, remote_count);
 
         // iterate
         t /= 2;
         pthread_barrier_wait(barrier);
     }
 
+    // number of elements in xs before this process' elements
+    int n_prev = 0;
+    ns[tid] = n;
+    pthread_barrier_wait(barrier);
+
+    for (int i = 0; i < tid; i++)
+        n_prev += ns[i];
+    memcpy(xs + n_prev, ys, n * sizeof(int));
+
     free(lower);
     free(upper);
     free(targs);
+    free(ys);
 
     return NULL;
 }

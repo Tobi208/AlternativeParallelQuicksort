@@ -1,0 +1,2 @@
+If you have missed a seminars you can still pass this part by submitting an informal report on the corresponding labs. The informal report should include your codes to the tasks, runtime results, reflections on the results and answers to questions when applicable. All reports that are submitted before May 31:st will be graded in June. If you submit later than May 31:st we will grade it when we have time and it can be postponed until August.
+

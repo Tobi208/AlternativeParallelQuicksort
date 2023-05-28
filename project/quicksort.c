@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <omp.h>
+#include <pthread.h>
 #include <sys/time.h>
 
 /**
@@ -101,20 +101,35 @@ static void merge(int* xs, int* ys, int* zs, const int lo, const int size_y, con
 }
 
 /**
- * Use parallel quicksort on an array
- * as interpreted from QuickSort.pdf
+ * Input arguments for the thread workers,
+ * only the thread id changes per thread
 */
-void parallel_qs(int* xs, const int N, const int T) {
+typedef struct static_args_t {
+    int N, T;
+    int **recv;
+    int *xs, *recv_counts, *ps, *ns;
+    pthread_barrier_t* barrier;
+} static_args_t;
+typedef struct args_t {
+    int tid;
+    static_args_t*  static_args;
+} args_t;
 
-    int** recv = (int**) malloc(T * sizeof(int*));     // arrays exchanged between threads
-    int* recv_counts = (int*) malloc(T * sizeof(int)); // lenghts of arrays exchanged
-    int* ps = (int*) malloc(T * sizeof(int));          // pivot element for each thread
-    int* ns = (int*) malloc(T * sizeof(int));          // number of elements in each thread in xs
-    int t = T / 2;                                     // threads per group
+static void* thread_worker(void* targs) {
 
-#pragma omp parallel shared(xs, ps, t, recv, recv_counts) firstprivate(N, T) num_threads(T)
-{
-    const int tid = omp_get_thread_num();
+    // copy input
+    args_t* args = (args_t*) targs;
+    const int tid = args->tid;
+    static_args_t* s_args = args->static_args;
+    const int N = s_args->N;
+    const int T = s_args->T;
+    int* xs = s_args->xs;
+    int** recv = s_args->recv;
+    int* recv_counts = s_args->recv_counts;
+    int* ps = s_args->ps;
+    int* ns = s_args->ns;
+    pthread_barrier_t* barrier = s_args->barrier;
+
     // inclusive lower bound of this thread's subarray in xs
     int lo = tid * (N / T);
     // inclusive upper bound of this thread's subarray in xs
@@ -125,6 +140,7 @@ void parallel_qs(int* xs, const int N, const int T) {
     // sort subarray locally
     serial_qs(xs, lo, hi);
 
+    int t = T / 2;     // threads per group
     int p;             // value of pivot element
     int is_left_group; // if process is in a lower half group
     int n_prev;        // number of elements in xs before this process' elements
@@ -149,7 +165,7 @@ void parallel_qs(int* xs, const int N, const int T) {
             for (int i = tid; i < tid + (t * 2); i++)
                 ps[i] = p;
         }
-        #pragma omp barrier
+        pthread_barrier_wait(barrier);
 
         // count number of elements lower/higher than pivot element
         p = ps[tid];
@@ -202,7 +218,7 @@ void parallel_qs(int* xs, const int N, const int T) {
             local = upper;
             local_count = upper_count;
         }
-        #pragma omp barrier
+        pthread_barrier_wait(barrier);
 
         // receive data
         remote = recv[tid];
@@ -211,7 +227,7 @@ void parallel_qs(int* xs, const int N, const int T) {
         // reservate space for new local subarray in xs 
         n = remote_count + local_count;
         ns[tid] = n;
-        #pragma omp barrier
+        pthread_barrier_wait(barrier);
 
         // compute new lower and upper bounds of local subarray
         n_prev = 0;
@@ -224,17 +240,53 @@ void parallel_qs(int* xs, const int N, const int T) {
         merge(xs, local, remote, lo, local_count, remote_count);
 
         // iterate
-        #pragma omp single
         t /= 2;
+        pthread_barrier_wait(barrier);
     }
 
     free(lower);
     free(upper);
+    free(targs);
+
+    return NULL;
 }
+
+/**
+ * Use parallel quicksort on an array
+ * as interpreted from QuickSort.pdf
+*/
+void parallel_qs(int* xs, const int N, const int T) {
+
+    int** recv = (int**) malloc(T * sizeof(int*));     // arrays exchanged between threads
+    int* recv_counts = (int*) malloc(T * sizeof(int)); // lenghts of arrays exchanged
+    int* ps = (int*) malloc(T * sizeof(int));          // pivot element for each thread
+    int* ns = (int*) malloc(T * sizeof(int));          // number of elements in each thread in xs
+
+    pthread_barrier_t barrier;
+    pthread_barrier_init(&barrier, NULL, T);
+    static_args_t static_args = {N, T, recv, xs, recv_counts, ps, ns, &barrier};
+    pthread_t* threads = (pthread_t*) malloc(T * sizeof(pthread_t));
+
+    // fork
+    for (int i = 0; i < T; i++) {
+        // malloc because otherwise it will reuse memory
+        args_t* targs = (args_t*) malloc(sizeof(args_t));
+        targs->tid = i;
+        targs->static_args = &static_args;
+        pthread_create(threads + i, NULL, thread_worker, (void*) targs);
+    }
+
+    // join
+    for (int i = 0; i < T; i++) {
+        pthread_join(threads[i], NULL);
+    }
+
     free(recv);
     free(recv_counts);
     free(ps);
     free(ns);
+    free(threads);
+    pthread_barrier_destroy(&barrier);
 }
 
 int main(int argc, char** argv) {

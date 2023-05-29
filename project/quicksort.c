@@ -82,10 +82,8 @@ static void serial_qs(int* xs, const int lo, const int hi) {
 static void split(int* xs, int* ys, int* zs, const int n, const int p) {
     int j = 0, k = 0;
     for (int i = 0; i < n; i++)
-        if (xs[i] <= p)
-            ys[j++] = xs[i];
-        else
-            zs[k++] = xs[i];
+        if (xs[i] <= p) ys[j++] = xs[i];
+        else            zs[k++] = xs[i];
 }
 
 /**
@@ -94,14 +92,10 @@ static void split(int* xs, int* ys, int* zs, const int n, const int p) {
 static void merge(int* xs, int* ys, int* zs, const int size_y, const int size_z) {
     int i = 0, j = 0, k = 0;
     while (j < size_y && k < size_z)
-        if (ys[j] < zs[k])
-            xs[i++] = ys[j++];
-        else
-            xs[i++] = zs[k++];
-    for (; j < size_y; j++)
-        xs[i++] = ys[j];
-    for (; k < size_z; k++)
-        xs[i++] = zs[k];
+        if (ys[j] < zs[k])  xs[i++] = ys[j++];
+        else                xs[i++] = zs[k++];
+    for (; j < size_y; j++) xs[i++] = ys[j];
+    for (; k < size_z; k++) xs[i++] = zs[k];
 }
 
 /**
@@ -109,25 +103,26 @@ static void merge(int* xs, int* ys, int* zs, const int size_y, const int size_z)
  * only the thread id changes per thread
 */
 typedef struct static_args_t {
-    int N, T;
+    unsigned int N;
+    unsigned char T;
     int **recv;
     int *xs, *recv_counts, *ps, *ns;
     pthread_barrier_t *bs_local, *bs_group;
 } static_args_t;
 
 typedef struct args_t {
-    int tid;
+    unsigned char tid;
     static_args_t* static_args;
 } args_t;
 
 static void* thread_worker(void* targs) {
 
     // copy input
-    args_t* args = (args_t*) targs;
-    const int tid = args->tid;
-    static_args_t* s_args = args->static_args;
-    const int N = s_args->N;
-    const int T = s_args->T;
+    const args_t* args = (args_t*) targs;
+    const unsigned char tid = args->tid;
+    const static_args_t* s_args = args->static_args;
+    const unsigned int N = s_args->N;
+    const unsigned char T = s_args->T;
     int* xs = s_args->xs;
     int** recv = s_args->recv;
     int* recv_counts = s_args->recv_counts;
@@ -150,9 +145,9 @@ static void* thread_worker(void* targs) {
     // sort subarray locally
     serial_qs(ys, 0, n - 1);
 
-    int lid, gid; // local id, group id
-    int t = T;    // threads per group
-    int p;        // value of pivot element
+    unsigned char lid, gid; // local id, group id
+    unsigned char t = T;    // threads per group
+    int p;                  // value of pivot element
 
     // arrays for elements lower/higher than the pivot element
     int *lower, *upper;
@@ -163,9 +158,9 @@ static void* thread_worker(void* targs) {
     int remote_count, local_count;
 
     // for finding the correct barriers in the collective arrays
-    int shift_bs_group = 0;
-    int num_gs = 1;
-    int shift_bs_local = 0;
+    unsigned char shift_bs_group = 0;
+    unsigned char shift_bs_local = 0;
+    unsigned char num_gs = 1;
 
     // divide threads into groups until no smaller groups can be formed
     while (t > 1) {
@@ -180,12 +175,11 @@ static void* thread_worker(void* targs) {
         
         // wait for threads to finish splitting in previous iteration
         // otherwise they might split by the pivot element of the next iteration
-        if (t != T)
-            pthread_barrier_wait(bs_group + shift_bs_group + gid);
+        pthread_barrier_wait(bs_group + shift_bs_group + gid);
 
         // distribute pivot element within group
         if (lid == 0)
-            for (int i = tid; i < tid + t; i++)
+            for (unsigned char i = tid; i < tid + t; i++)
                     ps[i] = p;
         pthread_barrier_wait(bs_group + shift_bs_group + gid);
 
@@ -258,7 +252,7 @@ static void* thread_worker(void* targs) {
         pthread_barrier_wait(bs_group);
     // find location of local subarray on xs
     int n_prev = 0;
-    for (int i = 0; i < tid; i++)
+    for (unsigned char i = 0; i < tid; i++)
         n_prev += ns[i];
     // copy
     memcpy(xs + n_prev, ys, n * sizeof(int));
@@ -274,7 +268,7 @@ static void* thread_worker(void* targs) {
  * Use parallel quicksort on an array
  * as interpreted from QuickSort.pdf
 */
-void parallel_qs(int* xs, const int N, const int T) {
+void parallel_qs(int* xs, const unsigned int N, const unsigned char T) {
 
     int** recv = (int**) malloc(T * sizeof(int*));     // arrays exchanged between threads
     int* recv_counts = (int*) malloc(T * sizeof(int)); // lenghts of arrays exchanged
@@ -282,7 +276,7 @@ void parallel_qs(int* xs, const int N, const int T) {
     int* ns = (int*) malloc(T * sizeof(int));          // number of elements in each thread in xs
 
     pthread_barrier_t* bs_local = (pthread_barrier_t*) malloc(T * sizeof(pthread_barrier_t));
-    for (int i = 0; i < T; i++)
+    for (unsigned char i = 0; i < T; i++)
         pthread_barrier_init(bs_local + i, NULL, 2);
 
     // let T = 16, then
@@ -290,19 +284,19 @@ void parallel_qs(int* xs, const int N, const int T) {
     // b_counts = [16, 8, 8, 4, 4, 4, 4, 2, 2, 2, 2, 2, 2, 2, 2]
     // num_bs_g =  1  +  2  +     4     +          8
     int num_bs_group = 0;
-    for (int j = 1; j < T; j = j << 1)
+    for (unsigned char j = 1; j < T; j = j << 1)
         num_bs_group += j;
     pthread_barrier_t* bs_group = (pthread_barrier_t*) malloc(num_bs_group * sizeof(pthread_barrier_t));
-    int l = 0;
-    for (int j = 1; j < T; j = j << 1)
-        for (int k = 0; k < j; k++)
+    unsigned char l = 0;
+    for (unsigned char j = 1; j < T; j = j << 1)
+        for (unsigned char k = 0; k < j; k++)
             pthread_barrier_init(bs_group + l++, NULL, T / j);
 
     static_args_t static_args = {N, T, recv, xs, recv_counts, ps, ns, bs_local, bs_group};
     pthread_t* threads = (pthread_t*) malloc(T * sizeof(pthread_t));
 
     // fork
-    for (int i = 0; i < T; i++) {
+    for (unsigned char i = 0; i < T; i++) {
         // malloc because otherwise it will reuse pointers or something
         args_t* targs = (args_t*) malloc(sizeof(args_t));
         targs->tid = i;
@@ -311,7 +305,7 @@ void parallel_qs(int* xs, const int N, const int T) {
     }
 
     // join
-    for (int i = 0; i < T; i++) {
+    for (unsigned char i = 0; i < T; i++) {
         pthread_join(threads[i], NULL);
     }
 
@@ -321,9 +315,9 @@ void parallel_qs(int* xs, const int N, const int T) {
     free(ps);
     free(ns);
     free(threads);
-    for (int i = 0; i < T; i++)
+    for (unsigned char i = 0; i < T; i++)
         pthread_barrier_destroy(bs_local + i);
-    for (int i = 0; i < num_bs_group; i++)
+    for (unsigned char i = 0; i < num_bs_group; i++)
         pthread_barrier_destroy(bs_group + i);
     free(bs_local);
     free(bs_group);
@@ -336,12 +330,12 @@ int main(int argc, char** argv) {
         printf("Usage: ./quicksort N (input size) file (binary file containing integers) T (number of threads such that T = 2^k)\n");
         exit(-1);
     }
-    const int N = atoi(argv[1]);
+    const unsigned int N = (unsigned int) atoi(argv[1]);
     char* filename = argv[2];
-    const int T = atoi(argv[3]);
+    const unsigned char T = (unsigned char) atoi(argv[3]);
     // https://stackoverflow.com/questions/600293/how-to-check-if-a-number-is-a-power-of-2
     if ((T & (T - 1)) != 0) {
-        printf("T must be defined such that T = 2^k\n");
+        printf("T must be defined such that T = 2^k and 0 < T < 256\n");
         exit(-1);
     }
 

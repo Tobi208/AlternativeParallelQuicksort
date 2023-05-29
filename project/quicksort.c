@@ -65,7 +65,7 @@ static void serial_qs(int* xs, const int lo, const int hi) {
 
         // lomuto partition scheme
         int i = lo - 1;
-        for (int j = lo; j <= hi - 1; j++)
+        for (int j = lo; j < hi; j++)
             if (xs[j] <= xs[hi])
                 swap(&xs[++i], &xs[j]);
         swap(&xs[++i], &xs[hi]);
@@ -81,15 +81,11 @@ static void serial_qs(int* xs, const int lo, const int hi) {
 */
 static void split(int* xs, int* ys, int* zs, const int n, const int p) {
     int j = 0, k = 0;
-    for (int i = 0; i < n; i++) {
-        if (xs[i] <= p) {
-            ys[j] = xs[i];
-            j++;
-        } else {
-            zs[k] = xs[i];
-            k++;
-        }
-    }
+    for (int i = 0; i < n; i++)
+        if (xs[i] <= p)
+            ys[j++] = xs[i];
+        else
+            zs[k++] = xs[i];
 }
 
 /**
@@ -97,24 +93,15 @@ static void split(int* xs, int* ys, int* zs, const int n, const int p) {
 */
 static void merge(int* xs, int* ys, int* zs, const int size_y, const int size_z) {
     int i = 0, j = 0, k = 0;
-    while (j < size_y && k < size_z) {
-        if (ys[j] < zs[k]) {
-            xs[i] = ys[j];
-            j++;
-        } else {
-            xs[i] = zs[k];
-            k++;
-        }
-        i++;
-    }
-    for (; j < size_y; j++) {
-        xs[i] = ys[j];
-        i++;
-    }
-    for (; k < size_z; k++) {
-        xs[i] = zs[k];
-        i++;
-    }
+    while (j < size_y && k < size_z)
+        if (ys[j] < zs[k])
+            xs[i++] = ys[j++];
+        else
+            xs[i++] = zs[k++];
+    for (; j < size_y; j++)
+        xs[i++] = ys[j];
+    for (; k < size_z; k++)
+        xs[i++] = zs[k];
 }
 
 /**
@@ -125,11 +112,12 @@ typedef struct static_args_t {
     int N, T;
     int **recv;
     int *xs, *recv_counts, *ps, *ns;
-    pthread_barrier_t* barrier;
+    pthread_barrier_t *bs_local, *bs_group;
 } static_args_t;
+
 typedef struct args_t {
     int tid;
-    static_args_t*  static_args;
+    static_args_t* static_args;
 } args_t;
 
 static void* thread_worker(void* targs) {
@@ -145,49 +133,61 @@ static void* thread_worker(void* targs) {
     int* recv_counts = s_args->recv_counts;
     int* ps = s_args->ps;
     int* ns = s_args->ns;
-    pthread_barrier_t* barrier = s_args->barrier;
+    pthread_barrier_t* bs_local = s_args->bs_local;
+    pthread_barrier_t* bs_group = s_args->bs_group;
 
-    // inclusive lower bound of this thread's subarray in xs
+    // inclusive lower bound of this thread's subarray on xs
     int lo = tid * (N / T);
-    // inclusive upper bound of this thread's subarray in xs
+    // inclusive upper bound of this thread's subarray on xs
     int hi = tid < T - 1 ? (tid + 1) * (N / T) - 1 : N - 1;
-    // total number of elements in this thread's subarray in xs
+    // total number of elements in this thread's subarray on xs
     int n = hi - lo + 1;
 
+    // copy to local subarray
     int* ys = (int*) malloc(n * sizeof(int));
     memcpy(ys, xs + lo, n * sizeof(int));
 
     // sort subarray locally
     serial_qs(ys, 0, n - 1);
 
-    int lid; //, gid;
-    int t = T;         // threads per group
-    int p;             // value of pivot element
+    int lid, gid; // local id, group id
+    int t = T;    // threads per group
+    int p;        // value of pivot element
 
     // arrays for elements lower/higher than the pivot element
-    int* lower = (int*) malloc(sizeof(int));
-    int* upper = (int*) malloc(sizeof(int));
-    int upper_count, lower_count;
+    int *lower, *upper;
+    int lower_count, upper_count;
 
     // arrays from elements received from another process and for retained elements
-    int* remote, *local;
+    int *remote, *local;
     int remote_count, local_count;
 
-    // divide threads into groups until
-    // no smaller groups can be formed
+    // for finding the correct barriers in the collective arrays
+    int shift_bs_group = 0;
+    int num_gs = 1;
+    int shift_bs_local = 0;
+
+    // divide threads into groups until no smaller groups can be formed
     while (t > 1) {
 
         lid = tid % t;
-        // gid = tid / t;
+        gid = tid / t;
 
         // strategy 1
         // median of thread 0 of each group
-        if (lid == 0) {
+        if (lid == 0)
             p = ys[n / 2];
+        
+        // wait for threads to finish splitting in previous iteration
+        // otherwise they might split by the pivot element of the next iteration
+        if (t != T)
+            pthread_barrier_wait(bs_group + shift_bs_group + gid);
+
+        // distribute pivot element within group
+        if (lid == 0)
             for (int i = tid; i < tid + t; i++)
-                ps[i] = p;
-        }
-        pthread_barrier_wait(barrier);
+                    ps[i] = p;
+        pthread_barrier_wait(bs_group + shift_bs_group + gid);
 
         // count number of elements lower/higher than pivot element
         p = ps[tid];
@@ -196,10 +196,8 @@ static void* thread_worker(void* targs) {
             if (ys[i] <= p)
                 lower_count++;
         upper_count = n - lower_count;
-        
-        // do not use realloc!
-        free(lower);
-        free(upper);
+
+        // realloc is evil, do not use
         lower = (int*) malloc(lower_count * sizeof(int));
         upper = (int*) malloc(upper_count * sizeof(int));
 
@@ -208,10 +206,10 @@ static void* thread_worker(void* targs) {
 
         /* Data exchange pattern:
          * t = 8
-         * left groups   right groups
-         *   0 1 2 3   |   4 5 6 7
+         * lower groups   upper groups
+         *    0 1 2 3   |   4 5 6 7
          * then
-         * 0 <-> 4, 1 <-> 5, 2 <-> 6, etc. 
+         * 0 <-> 4, 1 <-> 5, 2 <-> 6, 3 <-> 7
          */
 
         // send data
@@ -221,14 +219,17 @@ static void* thread_worker(void* targs) {
             recv_counts[tid + t / 2] = upper_count;
             local = lower;
             local_count = lower_count;
+            shift_bs_local = tid + t / 2;
         } else {
             // send lower part, receive upper part
             recv[tid - t / 2] = lower;
             recv_counts[tid - t / 2] = lower_count;
             local = upper;
             local_count = upper_count;
+            shift_bs_local = tid;
         }
-        pthread_barrier_wait(barrier);
+        // use barrier of the upper partner
+        pthread_barrier_wait(bs_local + shift_bs_local);
 
         // receive data
         remote = recv[tid];
@@ -240,22 +241,29 @@ static void* thread_worker(void* targs) {
         ys = (int*) malloc(n * sizeof(int));
         merge(ys, local, remote, local_count, remote_count);
 
+        // this frees lower/upper and the pointers in recv
+        free(local);
+        free(remote);
+
         // iterate
-        t /= 2;
-        pthread_barrier_wait(barrier);
+        t = t >> 1;
+        shift_bs_group += num_gs;
+        num_gs = num_gs << 1;
     }
 
-    // number of elements in xs before this process' elements
-    int n_prev = 0;
+    // merge local subarrays back into xs
+    // reservate space on xs
     ns[tid] = n;
-    pthread_barrier_wait(barrier);
-
+    if (T > 1) // else bs_group was never allocated
+        pthread_barrier_wait(bs_group);
+    // find location of local subarray on xs
+    int n_prev = 0;
     for (int i = 0; i < tid; i++)
         n_prev += ns[i];
+    // copy
     memcpy(xs + n_prev, ys, n * sizeof(int));
 
-    free(lower);
-    free(upper);
+    // free thread local memory
     free(targs);
     free(ys);
 
@@ -273,14 +281,29 @@ void parallel_qs(int* xs, const int N, const int T) {
     int* ps = (int*) malloc(T * sizeof(int));          // pivot element for each thread
     int* ns = (int*) malloc(T * sizeof(int));          // number of elements in each thread in xs
 
-    pthread_barrier_t barrier;
-    pthread_barrier_init(&barrier, NULL, T);
-    static_args_t static_args = {N, T, recv, xs, recv_counts, ps, ns, &barrier};
+    pthread_barrier_t* bs_local = (pthread_barrier_t*) malloc(T * sizeof(pthread_barrier_t));
+    for (int i = 0; i < T; i++)
+        pthread_barrier_init(bs_local + i, NULL, 2);
+
+    // let T = 16, then
+    // bs_group = [ 0, 0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 6, 7]
+    // b_counts = [16, 8, 8, 4, 4, 4, 4, 2, 2, 2, 2, 2, 2, 2, 2]
+    // num_bs_g =  1  +  2  +     4     +          8
+    int num_bs_group = 0;
+    for (int j = 1; j < T; j = j << 1)
+        num_bs_group += j;
+    pthread_barrier_t* bs_group = (pthread_barrier_t*) malloc(num_bs_group * sizeof(pthread_barrier_t));
+    int l = 0;
+    for (int j = 1; j < T; j = j << 1)
+        for (int k = 0; k < j; k++)
+            pthread_barrier_init(bs_group + l++, NULL, T / j);
+
+    static_args_t static_args = {N, T, recv, xs, recv_counts, ps, ns, bs_local, bs_group};
     pthread_t* threads = (pthread_t*) malloc(T * sizeof(pthread_t));
 
     // fork
     for (int i = 0; i < T; i++) {
-        // malloc because otherwise it will reuse memory
+        // malloc because otherwise it will reuse pointers or something
         args_t* targs = (args_t*) malloc(sizeof(args_t));
         targs->tid = i;
         targs->static_args = &static_args;
@@ -292,12 +315,18 @@ void parallel_qs(int* xs, const int N, const int T) {
         pthread_join(threads[i], NULL);
     }
 
+    // free shared memory
     free(recv);
     free(recv_counts);
     free(ps);
     free(ns);
     free(threads);
-    pthread_barrier_destroy(&barrier);
+    for (int i = 0; i < T; i++)
+        pthread_barrier_destroy(bs_local + i);
+    for (int i = 0; i < num_bs_group; i++)
+        pthread_barrier_destroy(bs_group + i);
+    free(bs_local);
+    free(bs_group);
 }
 
 int main(int argc, char** argv) {
@@ -308,7 +337,7 @@ int main(int argc, char** argv) {
         exit(-1);
     }
     const int N = atoi(argv[1]);
-    char* filename = (argv[2]);
+    char* filename = argv[2];
     const int T = atoi(argv[3]);
     // https://stackoverflow.com/questions/600293/how-to-check-if-a-number-is-a-power-of-2
     if ((T & (T - 1)) != 0) {
@@ -330,7 +359,7 @@ int main(int argc, char** argv) {
         exit(-1);
     }
 
+    // free
     free(xs);
-
     return 0;
 }

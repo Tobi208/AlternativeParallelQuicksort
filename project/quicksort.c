@@ -67,8 +67,8 @@ static void serial_qs(int* xs, const int lo, const int hi) {
         int i = lo - 1;
         for (int j = lo; j < hi; j++)
             if (xs[j] <= xs[hi])
-                swap(&xs[++i], &xs[j]);
-        swap(&xs[++i], &xs[hi]);
+                swap(xs + ++i, xs + j);
+        swap(xs + ++i, xs + hi);
 
         // recursion
         serial_qs(xs, lo, i - 1);
@@ -235,7 +235,7 @@ static void* thread_worker(void* targs) {
         ys = (int*) malloc(n * sizeof(int));
         merge(ys, local, remote, local_count, remote_count);
 
-        // this frees lower/upper and the pointers in recv
+        // this also frees lower/upper and the pointers in recv
         free(local);
         free(remote);
 
@@ -327,7 +327,7 @@ int main(int argc, char** argv) {
 
     // parse input
     if (argc != 4) {
-        printf("Usage: ./quicksort N (input size) file (binary file containing integers) T (number of threads such that T = 2^k)\n");
+        printf("Usage: ./quicksort N (input size) file (binary file containing integers) T (number of threads such that T = 2^k and 0 < T < 256)\n");
         exit(-1);
     }
     const unsigned int N = (unsigned int) atoi(argv[1]);

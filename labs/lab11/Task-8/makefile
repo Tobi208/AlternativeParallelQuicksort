@@ -17,8 +17,5 @@ sort_funcs.o: sort_funcs.h sort_funcs.c
 main.o: main.c sort_funcs.h
 	$(CC) $(CFLAGS) -c main.c 
 
-small_code: small_code.c
-	gcc -o small_code small_code.c -fopenmp
-
 clean:
-	$(RM) $(EXECUTABLE) $(OBJS) small_code
+	$(RM) $(EXECUTABLE) $(OBJS)

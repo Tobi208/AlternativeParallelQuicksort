@@ -49,7 +49,14 @@ int main(int argc, char* argv[]) {
 
   // Sort list
   double time1 = get_wall_seconds();
-  merge_sort(list_to_sort, N, T);
+  #pragma omp parallel num_threads(T)
+  {
+    #pragma omp single
+    {
+      #pragma omp task
+      merge_sort(list_to_sort, N, 0);
+    }
+  }
   printf("Sorting list with length %d took %7.3f wall seconds.\n", N, get_wall_seconds()-time1);  
 
   int count7_again = count_values(list_to_sort, N, 7);

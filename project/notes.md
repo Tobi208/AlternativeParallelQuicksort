@@ -24,3 +24,5 @@
 - both iterative qs and qs + bubblesort were slower than regular qs
 
 - qs is probably better than merge sort on average as it has better cache utilization
+
+- binary search performs better than linear search for pivot element index

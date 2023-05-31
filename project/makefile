@@ -20,10 +20,9 @@ run: quicksort
 
 time: quicksort
 	@echo "N = $(N)"
-	@echo " T | time (s)"
-	@echo "-------------"
+	@echo "T,t"
 	@for T in 1 2 4 8 16 32 ; do \
-		printf "%+2s | " "$$T" ; \
+		echo -n "$$T," ; \
 		./quicksort $(N) $(INPUT_DIR)/$(N) $$T ; \
 	done
 

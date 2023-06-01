@@ -75,10 +75,12 @@ static int complete(const int* xs, const unsigned int N) {
 */
 static void serial_qs(int* xs, const int lo, const int hi) {
     if (lo < hi) {
-        // lomuto partition scheme
+        const int mi = lo + (hi - lo) / 2;
+        const int p = xs[mi];
+        swap(xs + mi, xs + hi);
         int i = lo - 1;
         for (int j = lo; j < hi; j++)
-            if (xs[j] <= xs[hi])
+            if (xs[j] <= p)
                 swap(xs + ++i, xs + j);
         swap(xs + ++i, xs + hi);
         serial_qs(xs, lo, i - 1);

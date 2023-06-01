@@ -1,31 +1,60 @@
+CC = gcc
+SOURCE = quicksort.c
+EXE = quicksort
+CFLAGS = -Wall -O3 -ffast-math -march=native -lpthread
 N = 100000000
 INPUT_DIR = input
+INPUT = $(INPUT_DIR)/$(N)
 T = 1
+S = 1
 
-quicksort: quicksort.c
-	gcc quicksort.c -o quicksort -Wall -O3 -ffast-math -march=native -lpthread
+DIST = 0
+SEED = 0
 
-vecinfo: quicksort.c
-	gcc quicksort.c -o quicksort -Wall -O3 -ffast-math -march=native -lpthread -fopt-info-vec
+DFLAGS = 
+DEBUG = 0
+ifeq ($(DEBUG), 1)
+    CFLAGS += -g
+endif
+CHECK_SORTED = 0
+ifeq ($(CHECK_SORTED), 1)
+    DFLAGS += -DCHECK_SORTED 
+endif
+CHECK_COMPLETE = 0
+ifeq ($(CHECK_COMPLETE), 1)
+    DFLAGS += -DCHECK_COMPLETE 
+endif
+
+$(EXE): $(SOURCE)
+	$(CC) $(SOURCE) -o $(EXE) $(CFLAGS) $(DFLAGS)
+
+run: $(EXE)
+	./$(EXE) $(N) $(INPUT) $(T) $(S)
+
+# @echo "N = $(N)"
+# @echo "DIST,S,T,t"
+time: $(EXE)
+	@for S in 1 2 3 ; do \
+		for T in 1 2 4 8 16 32 ; do \
+			echo -n "$(DIST),$$S,$$T," ; \
+			./$(EXE) $(N) $(INPUT) $$T $SS; \
+			echo -n "$(DIST),$$S,$$T," ; \
+			./$(EXE) $(N) $(INPUT) $$T $SS; \
+			echo -n "$(DIST),$$S,$$T," ; \
+			./$(EXE) $(N) $(INPUT) $$T $SS; \
+		done \
+	done
+
+vecinfo: $(SOURCE)
+	$(CC) $(SOURCE) -o $(EXE) $(CFLAGS) $(DFLAGS) -fopt-info-vec
 
 generator: generator.c
-	gcc generator.c -o generator -Wall -O3 -ffast-math -march=native
+	$(CC) generator.c -o generator $(CFLAGS)
 
 generate: generator
 	mkdir -p $(INPUT_DIR)
-	./generator $(N) $(INPUT_DIR)
-
-run: quicksort
-	./quicksort $(N) $(INPUT_DIR)/$(N) $(T)
-
-time: quicksort
-	@echo "N = $(N)"
-	@echo "T,t"
-	@for T in 1 2 4 8 16 32 ; do \
-		echo -n "$$T," ; \
-		./quicksort $(N) $(INPUT_DIR)/$(N) $$T ; \
-	done
+	./generator $(N) $(INPUT_DIR) $(DIST) $(SEED)
 
 clean:
-	rm -f quicksort generator
+	rm -f $(EXE) generator
 	rm -rf $(INPUT_DIR)

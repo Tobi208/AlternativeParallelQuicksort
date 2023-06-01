@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 /**
  * Swap two integer values
@@ -16,9 +17,17 @@ static void swap(int* x, int* y) {
  * Fisher-Yates shuffle
  * https://stackoverflow.com/questions/6127503/shuffle-array-in-c
 */
-static void shuffle(int* xs, const int N) {
-    for (int i = 0; i < N - 1; i++)
-        swap(&xs[i], &xs[i + rand() / (RAND_MAX / (N - i) + 1)]);
+static void shuffle(int* xs, const unsigned int N) {
+    for (unsigned int i = 0; i < N - 1; i++)
+        swap(xs + i, xs + (i + rand() / (RAND_MAX / (N - i) + 1)));
+}
+
+/**
+ * Reverse an array
+*/
+static void reverse(int* xs, const unsigned int N) {
+    for (unsigned int i = 0; i < N / 2; i++)
+        swap(xs + i, xs + N - 1 - i);
 }
 
 /**
@@ -40,18 +49,39 @@ static void write_file(const int* xs, const int N, const char* path) {
 int main(int argc, char** argv) {
 
     // parse input
-    if (argc != 3) {
-        printf("Usage: ./generator N (input size) path (directory to store file in)\n");
+    if (argc != 5) {
+        printf("Usage: ./generator N path dist seed\n");
+        printf("       N    - input size\n");
+        printf("       path - directory to store file in\n");
+        printf("       dist - 0 = random order, 1 = random ints, 2 = sorted, 3 = reversed\n");
+        printf("       seed - for the random number generator, 0 = current time\n");
         exit(-1);
     }
-    const int N = atoi(argv[1]);
+    const int   N    = atoi(argv[1]);
     const char* path = argv[2];
+    const char  dist = atoi(argv[3]);
+    const int   seed = atoi(argv[4]);
+
+    // seed RNG
+    if (seed <= 0) srand(time(NULL));
+    else           srand(seed);
 
     // generate data
     int* xs = (int*) malloc(N * sizeof(int));
-    for (int i = 0; i < N; i++)
-        xs[i] = i + 1;
-    shuffle(xs, N);
+    
+    // random integers
+    if (dist == 1) {
+        for (int i = 0; i < N; i++)
+            xs[i] = rand();
+    // random order
+    } else
+        for (int i = 0; i < N; i++)
+            xs[i] = i;
+    if (dist == 0)
+        shuffle(xs, N);
+    // reversed order
+    else if (dist == 3)
+        reverse(xs, N);
 
     // write output
     write_file(xs, N, path);

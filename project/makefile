@@ -45,6 +45,23 @@ time: $(EXE)
 		done \
 	done
 
+timeFN: $(EXE)
+	@echo -n "$(N),"
+	@./$(EXE) $(N) $(INPUT) 32 2
+	@echo -n "$(N),"
+	@./$(EXE) $(N) $(INPUT) 32 2
+	@echo -n "$(N),"
+	@./$(EXE) $(N) $(INPUT) 32 2
+
+
+timeWeak: $(EXE)
+	@echo -n "$(T),"
+	@./$(EXE) $(N) $(INPUT) $(T) 2
+	@echo -n "$(T),"
+	@./$(EXE) $(N) $(INPUT) $(T) 2
+	@echo -n "$(T),"
+	@./$(EXE) $(N) $(INPUT) $(T) 2
+
 vecinfo: $(SOURCE)
 	$(CC) $(SOURCE) -o $(EXE) $(CFLAGS) $(DFLAGS) -fopt-info-vec
 

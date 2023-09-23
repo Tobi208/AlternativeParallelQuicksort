@@ -1,9 +1,0 @@
-n =  1: 4,146s
-n =  2: 2,075s
-n =  4: 1,038s
-n =  8: 0,521s
-n = 16: 0,269s
-n = 32: 0,179s
-
-speedup os pretty good
-the parallelization is so much more easier it's not even funny, literally just 1 line of code

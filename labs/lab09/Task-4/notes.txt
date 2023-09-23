@@ -1,5 +1,0 @@
-If we remove the barrier, hellos and goodbyes are interleaving.
-
-Compiling spinwait with -O3 deadlocks because the optimization may remove some read/write operations on a variable that we actually needed but didn't appear so because it was used in a different thread.
-
-Marking the global variables waiting and state as volatile prohibits the compiler from doing such optimizations.

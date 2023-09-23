@@ -1,3 +1,0 @@
-without mutex, the value is different each run because of data races
-
-with a mutex, I get the correct sum every time, which is N * 100000

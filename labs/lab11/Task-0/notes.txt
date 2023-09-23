@@ -1,2 +1,0 @@
-compiled without -fopenmp flag -> no possible memleaks
-compiled with    -fopenmp flag -> a bunch of possibly lost and still reachable blocks

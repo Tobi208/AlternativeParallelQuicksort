@@ -1,5 +1,0 @@
-gcc hello_openmp.c -> 1 line of output
-gcc -fopenmp hello_openmp.c -> 5 lines of output
-after removing num_threads(5) -> 32 lines of output (available threads?)
-export OMP_NUM_THREADS=3 -> 3 lines of output
-omp_set_num_threads(6) -> 6 lines of output

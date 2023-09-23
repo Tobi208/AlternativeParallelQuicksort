@@ -1,8 +1,0 @@
-I predict that a is going to be unique for every thread where as b is shared
-Since a is uninitialized, it can take any value that's currently in memory and is thus unpredictable
-
-Making it firstprivate initializes a to the value it had in the root process, so it should be the same for every thread
-
-Lastprivate allows us to "return" a value
-
-All observations are as expected

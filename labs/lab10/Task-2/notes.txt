@@ -1,5 +1,0 @@
-i is a long int because the max int is 2147483647 but i is 3000000000
-for 32 threads, top shows 3200% cpu usage
-for any number of threads <= 32, the run time stays approx. the same
-using 64 instead of 32 threads however approx. doubles the wall time
-that is because the cpu only has 32 threads so half of the jobs are run after the first half

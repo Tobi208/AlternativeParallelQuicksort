@@ -1,2 +1,0 @@
-omp_get_num_threads() shows number of threads available to the program and omp_get_max_threads() avalible on the whole system
-yep, works as expected

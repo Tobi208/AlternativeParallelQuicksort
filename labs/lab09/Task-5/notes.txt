@@ -1,7 +1,0 @@
-serial pi: 3.1415926535899894 
-parall pi: 3.1415926535897167
-
-serial real time: 2,350s
-parall real time: 0,461s
-
-The parallel implementation is more accurate due to less rounding errors for the local sums?

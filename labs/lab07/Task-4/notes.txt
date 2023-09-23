@@ -1,6 +1,0 @@
-I was worried about splitting the loop as it is the inverse of the previous optimization but it appears that avoiding branching is very worthwhile
-
-f_std tests took   1.647 wall seconds.
-f_opt tests took   0.334 wall seconds.
-
-Pretty good speedup.

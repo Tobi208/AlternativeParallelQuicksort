@@ -1,6 +1,0 @@
-SLOW, no opt: 2,178s
-SLOW,    opt: 0,000s
-FAST, no opt: 1,891s
-FAST,    opt: 0,000s
-
-Speedup from inlining is okay but the the compiler optimization indicates that the experiment might be too simple.
